@@ -19,29 +19,29 @@
 ### 方式一：通过 npx 运行（推荐，无需安装）
 
 ```bash
-npx figma-mcp-server figd_your_figma_token_here
+npx figma-mcp-full-server figd_your_figma_token_here
 ```
 
 ### 方式二：全局安装后运行
 
 ```bash
 # 全局安装
-npm install -g figma-mcp-server
+npm install -g figma-mcp-full-server
 
 # 运行
-figma-mcp figd_your_figma_token_here
+figma-mcp-full-server figd_your_figma_token_here
 ```
 
 ### 方式三：本地项目安装
 
 ```bash
 # 在项目中安装
-npm install figma-mcp-server
+npm install figma-mcp-full-server
 
 # 运行
-npx figma-mcp figd_your_figma_token_here
+npx figma-mcp-full-server figd_your_figma_token_here
 # 或者
-node_modules/.bin/figma-mcp figd_your_figma_token_here
+node_modules/.bin/figma-mcp-full-server figd_your_figma_token_here
 ```
 
 ### 方式四：从源码运行（开发用）
@@ -82,9 +82,9 @@ Windows: `%APPDATA%\Claude Desktop\config.json`
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
+    "figma-mcp-full-server": {
       "command": "npx",
-      "args": ["figma-mcp-server"],
+      "args": ["figma-mcp-full-server"],
       "env": {
         "FIGMA_TOKEN": "figd_your_figma_token_here"
       }
@@ -96,14 +96,14 @@ Windows: `%APPDATA%\Claude Desktop\config.json`
 #### 配置方式二：全局安装后使用
 
 ```bash
-npm install -g figma-mcp-server
+npm install -g figma-mcp-full-server
 ```
 
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
-      "command": "figma-mcp",
+    "figma-mcp-full-server": {
+      "command": "figma-mcp-full-server",
       "env": {
         "FIGMA_TOKEN": "figd_your_figma_token_here"
       }
@@ -115,15 +115,15 @@ npm install -g figma-mcp-server
 #### 配置方式三：本地项目中使用
 
 ```bash
-npm install figma-mcp-server
+npm install figma-mcp-full-server
 ```
 
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
+    "figma-mcp-full-server": {
       "command": "npx",
-      "args": ["figma-mcp"],
+      "args": ["figma-mcp-full-server"],
       "cwd": "/path/to/your/project",
       "env": {
         "FIGMA_TOKEN": "figd_your_figma_token_here"
@@ -355,3 +355,5 @@ MIT License
 ### 联系方式
 
 <img src="contact.JPG" alt="联系 Contact" width="360" />
+
+<img src="程序员热榜.jpg" alt="程序员热榜公众号" width="360" />

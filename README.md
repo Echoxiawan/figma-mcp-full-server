@@ -19,29 +19,29 @@ A Model Context Protocol (MCP) server that integrates with the Figma API to expo
 ### Option 1: Run via npx (recommended, no install)
 
 ```bash
-npx figma-mcp-server figd_your_figma_token_here
+npx figma-mcp-full-server figd_your_figma_token_here
 ```
 
 ### Option 2: Global install
 
 ```bash
 # Install globally
-npm install -g figma-mcp-server
+npm install -g figma-mcp-full-server
 
 # Run
-figma-mcp figd_your_figma_token_here
+figma-mcp-full-server figd_your_figma_token_here
 ```
 
 ### Option 3: Local project install
 
 ```bash
 # Install in your project
-npm install figma-mcp-server
+npm install figma-mcp-full-server
 
 # Run
-npx figma-mcp figd_your_figma_token_here
+npx figma-mcp-full-server figd_your_figma_token_here
 # or
-node_modules/.bin/figma-mcp figd_your_figma_token_here
+node_modules/.bin/figma-mcp-full-server figd_your_figma_token_here
 ```
 
 ### Option 4: Run from source (for development)
@@ -82,9 +82,9 @@ Choose one of the following setups:
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
+    "figma-mcp-full-server": {
       "command": "npx",
-      "args": ["figma-mcp-server"],
+      "args": ["figma-mcp-full-server"],
       "env": {
         "FIGMA_TOKEN": "figd_your_figma_token_here"
       }
@@ -96,14 +96,14 @@ Choose one of the following setups:
 #### Setup B: Global install
 
 ```bash
-npm install -g figma-mcp-server
+npm install -g figma-mcp-full-server
 ```
 
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
-      "command": "figma-mcp",
+    "figma-mcp-full-server": {
+      "command": "figma-mcp-full-server",
       "env": {
         "FIGMA_TOKEN": "figd_your_figma_token_here"
       }
@@ -115,15 +115,15 @@ npm install -g figma-mcp-server
 #### Setup C: Use from a project
 
 ```bash
-npm install figma-mcp-server
+npm install figma-mcp-full-server
 ```
 
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
+    "figma-mcp-full-server": {
       "command": "npx",
-      "args": ["figma-mcp"],
+      "args": ["figma-mcp-full-server"],
       "cwd": "/path/to/your/project",
       "env": {
         "FIGMA_TOKEN": "figd_your_figma_token_here"
@@ -351,3 +351,5 @@ Once configured, you can use Figma files directly in Claude!
 ### Contact
 
 <img src="contact.JPG" alt="Contact" width="360" />
+
+<img src="程序员热榜.jpg" alt="程序员热榜公众号" width="360" />

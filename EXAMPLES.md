@@ -8,10 +8,10 @@
 
 ```bash
 # 使用 npx 直接运行（推荐）
-npx figma-mcp-server figd_your_figma_token_here
+npx figma-mcp-full-server figd_your_figma_token_here
 
 # 或者先下载再运行
-npx figma-mcp-server@latest figd_your_figma_token_here
+npx figma-mcp-full-server@latest figd_your_figma_token_here
 ```
 
 ## 2. 全局安装使用
@@ -20,13 +20,13 @@ npx figma-mcp-server@latest figd_your_figma_token_here
 
 ```bash
 # 安装
-npm install -g figma-mcp-server
+npm install -g figma-mcp-full-server
 
 # 使用
-figma-mcp figd_your_figma_token_here
+figma-mcp-full-server figd_your_figma_token_here
 
 # 更新到最新版本
-npm update -g figma-mcp-server
+npm update -g figma-mcp-full-server
 ```
 
 ## 3. 项目本地使用
@@ -35,13 +35,13 @@ npm update -g figma-mcp-server
 
 ```bash
 # 在项目目录中安装
-npm install figma-mcp-server
+npm install figma-mcp-full-server
 
 # 使用
-npx figma-mcp figd_your_figma_token_here
+npx figma-mcp-full-server figd_your_figma_token_here
 
 # 或者直接调用
-./node_modules/.bin/figma-mcp figd_your_figma_token_here
+./node_modules/.bin/figma-mcp-full-server figd_your_figma_token_here
 ```
 
 ## 4. 开发环境使用
@@ -50,8 +50,8 @@ npx figma-mcp figd_your_figma_token_here
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/figma-mcp-server.git
-cd figma-mcp-server
+git clone https://github.com/yourusername/figma-mcp-full-server.git
+cd figma-mcp-full-server
 
 # 安装依赖
 npm install
@@ -76,9 +76,9 @@ node build/index.js figd_your_figma_token_here
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
+    "figma-mcp-full-server": {
       "command": "npx",
-      "args": ["figma-mcp-server"],
+      "args": ["figma-mcp-full-server"],
       "env": {
         "FIGMA_TOKEN": "figd_your_actual_token_here"
       }
@@ -92,14 +92,14 @@ node build/index.js figd_your_figma_token_here
 **优点**：启动速度快，版本稳定
 
 ```bash
-npm install -g figma-mcp-server
+npm install -g figma-mcp-full-server
 ```
 
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
-      "command": "figma-mcp",
+    "figma-mcp-full-server": {
+      "command": "figma-mcp-full-server",
       "env": {
         "FIGMA_TOKEN": "figd_your_actual_token_here"
       }
@@ -115,9 +115,9 @@ npm install -g figma-mcp-server
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
+    "figma-mcp-full-server": {
       "command": "npx",
-      "args": ["figma-mcp"],
+      "args": ["figma-mcp-full-server"],
       "cwd": "/path/to/your/project",
       "env": {
         "FIGMA_TOKEN": "figd_your_actual_token_here"
@@ -134,10 +134,10 @@ npm install -g figma-mcp-server
 ```json
 {
   "mcpServers": {
-    "figma-mcp": {
+    "figma-mcp-full-server": {
       "command": "node",
-      "args": ["/absolute/path/to/figma-mcp-server/build/index.js"],
-      "cwd": "/absolute/path/to/figma-mcp-server",
+      "args": ["/absolute/path/to/figma-mcp-full-server/build/index.js"],
+      "cwd": "/absolute/path/to/figma-mcp-full-server",
       "env": {
         "FIGMA_TOKEN": "figd_your_actual_token_here"
       }
@@ -154,7 +154,7 @@ npm install -g figma-mcp-server
 ```bash
 # 临时设置
 export FIGMA_TOKEN="figd_your_actual_token_here"
-npx figma-mcp-server
+npx figma-mcp-full-server
 
 # 永久设置（添加到 ~/.bashrc 或 ~/.zshrc）
 echo 'export FIGMA_TOKEN="figd_your_actual_token_here"' >> ~/.bashrc
@@ -164,7 +164,7 @@ echo 'export FIGMA_TOKEN="figd_your_actual_token_here"' >> ~/.bashrc
 ```cmd
 # 临时设置
 set FIGMA_TOKEN=figd_your_actual_token_here
-npx figma-mcp-server
+npx figma-mcp-full-server
 
 # 永久设置
 setx FIGMA_TOKEN "figd_your_actual_token_here"
@@ -174,7 +174,7 @@ setx FIGMA_TOKEN "figd_your_actual_token_here"
 ```powershell
 # 临时设置
 $env:FIGMA_TOKEN="figd_your_actual_token_here"
-npx figma-mcp-server
+npx figma-mcp-full-server
 
 # 永久设置（用户级）
 [Environment]::SetEnvironmentVariable("FIGMA_TOKEN", "figd_your_actual_token_here", "User")
@@ -184,16 +184,16 @@ npx figma-mcp-server
 
 ### 常见问题
 
-1. **"Cannot find module 'figma-mcp-server'"**
-   - 解决方案：使用 `npx figma-mcp-server` 或先安装 `npm install -g figma-mcp-server`
+1. **"Cannot find module 'figma-mcp-full-server'"**
+   - 解决方案：使用 `npx figma-mcp-full-server` 或先安装 `npm install -g figma-mcp-full-server`
 
 2. **"访问被拒绝"错误**
    - 检查 Figma token 是否正确
    - 确认对目标文件有访问权限
 
-3. **"Command not found: figma-mcp"**
-   - 全局安装：`npm install -g figma-mcp-server`
-   - 或使用 npx：`npx figma-mcp-server`
+3. **"Command not found: figma-mcp-full-server"**
+   - 全局安装：`npm install -g figma-mcp-full-server`
+   - 或使用 npx：`npx figma-mcp-full-server`
 
 4. **Claude Desktop 无法连接**
    - 检查配置文件路径是否正确
@@ -206,10 +206,10 @@ npx figma-mcp-server
 
 ```bash
 # 设置调试模式
-DEBUG=* npx figma-mcp-server figd_your_token_here
+DEBUG=* npx figma-mcp-full-server figd_your_token_here
 
 # 或者查看 Node.js 详细信息
-NODE_DEBUG=* npx figma-mcp-server figd_your_token_here
+NODE_DEBUG=* npx figma-mcp-full-server figd_your_token_here
 ```
 
 ## 性能优化
@@ -223,7 +223,7 @@ NODE_DEBUG=* npx figma-mcp-server figd_your_token_here
 ```bash
 # 使用国内 npm 镜像（如果网络慢）
 npm config set registry https://registry.npmmirror.com
-npx figma-mcp-server figd_your_token_here
+npx figma-mcp-full-server figd_your_token_here
 
 # 恢复官方镜像
 npm config set registry https://registry.npmjs.org

@@ -22,7 +22,7 @@ class FigmaMCPServer {
   constructor(accessToken: string) {
     this.server = new Server(
       {
-        name: 'figma-mcp',
+        name: 'figma-mcp-full-server',
         version: '1.0.0',
       },
       {
