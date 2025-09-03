@@ -1,0 +1,60 @@
+{
+  "name": "figma-mcp-server",
+  "version": "1.0.0",
+  "description": "A Model Context Protocol (MCP) server for Figma API integration with Claude Desktop. Extract images, styles, SVG data, and design elements from Figma files.",
+  "main": "build/index.js",
+  "bin": {
+    "figma-mcp": "build/index.js"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node build/index.js",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "files": [
+    "build/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "mcp",
+    "figma",
+    "api",
+    "design",
+    "claude",
+    "model-context-protocol",
+    "image-export",
+    "style-extraction",
+    "svg",
+    "design-tools",
+    "anthropic"
+  ],
+  "author": {
+    "name": "Echoxiawan",
+    "email": "xiawanjun888@gimail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Echoxiawan/figma-mcp-server#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Echoxiawan/figma-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Echoxiawan/figma-mcp-server/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

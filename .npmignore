@@ -1,0 +1,52 @@
+# 源代码目录（只发布编译后的代码）
+src/
+*.ts
+!*.d.ts
+
+# 开发配置文件
+tsconfig.json
+.vscode/
+.idea/
+
+# 开发依赖和缓存
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 测试文件
+test/
+tests/
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# 环境文件
+.env
+.env.local
+.env.*.local
+
+# OS 生成的文件
+.DS_Store
+Thumbs.db
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志文件
+logs/
+*.log
+
+# 临时文件
+tmp/
+temp/
+
+# 开发和示例文档（不需要发布）
+PUBLISH.md
+EXAMPLES.md
+publish.sh
