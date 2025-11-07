@@ -4,6 +4,10 @@ English | [简体中文](README.zh-CN.md)
 
 A Model Context Protocol (MCP) server that integrates with the Figma API to export images and extract style data.
 
+<a href="https://glama.ai/mcp/servers/@Echoxiawan/figma-mcp-full-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Echoxiawan/figma-mcp-full-server/badge" alt="Figma Tool MCP server" />
+</a>
+
 ## Features
 
 - 🖼️ **Image export**: Export node images from a Figma URL; supports PNG, JPG, SVG, PDF
@@ -236,7 +240,7 @@ This MCP server provides 7 tools:
 - Cause: Invalid Figma token or insufficient file permission
 - Fix: Verify token, ensure file is public or accessible
 
-#### 3. MCP server won’t start
+#### 3. MCP server won't start
 - Cause: Wrong paths or Node.js version too low
 - Fix:
   - Use absolute paths
