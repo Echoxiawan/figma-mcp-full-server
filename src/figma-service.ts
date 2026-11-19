@@ -88,6 +88,16 @@ export interface NodeElements {
   totalElements: number;
 }
 
+// Allowed domains for fetching external resources (SSRF protection)
+const ALLOWED_FIGMA_DOMAINS = [
+  'figma.com',
+  'www.figma.com',
+  's3.amazonaws.com',          // Figma uses S3 for image storage
+  'figma-alpha-api.s3.us-west-2.amazonaws.com',
+  's3-alpha.figma.com',
+  's3-alpha-sig.figma.com',
+];
+
 export class FigmaService {
   private api: AxiosInstance;
 
@@ -98,6 +108,35 @@ export class FigmaService {
         'X-Figma-Token': accessToken,
       },
     });
+  }
+
+  /**
+   * Validate that a URL is from an allowed Figma domain (SSRF protection)
+   */
+  private validateExternalUrl(url: string): void {
+    try {
+      const parsedUrl = new URL(url);
+      const hostname = parsedUrl.hostname.toLowerCase();
+
+      // Check if the hostname matches any allowed domain
+      const isAllowed = ALLOWED_FIGMA_DOMAINS.some(domain => {
+        return hostname === domain || hostname.endsWith('.' + domain);
+      });
+
+      if (!isAllowed) {
+        throw new Error(`Security: URL hostname '${hostname}' is not in the allowed list`);
+      }
+
+      // Only allow HTTPS
+      if (parsedUrl.protocol !== 'https:') {
+        throw new Error('Security: Only HTTPS URLs are allowed');
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Security:')) {
+        throw error;
+      }
+      throw new Error(`Security: Invalid URL format - ${url}`);
+    }
   }
 
   /**
@@ -185,32 +224,65 @@ export class FigmaService {
 
   /**
    * 递归遍历节点树，收集所有子节点
+   * Security: Depth limit to prevent stack overflow from malicious deeply nested structures
    */
-  traverseNodeTree(node: FigmaNode, collector: (node: FigmaNode) => void) {
+  private static readonly MAX_RECURSION_DEPTH = 100;
+
+  traverseNodeTree(
+    node: FigmaNode,
+    collector: (node: FigmaNode) => void,
+    currentDepth: number = 0
+  ): void {
+    // Security: Prevent stack overflow from deeply nested structures
+    if (currentDepth > FigmaService.MAX_RECURSION_DEPTH) {
+      console.error(`Warning: Maximum recursion depth (${FigmaService.MAX_RECURSION_DEPTH}) exceeded, skipping deeper nodes`);
+      return;
+    }
+
     collector(node);
     if (node.children) {
       for (const child of node.children) {
-        this.traverseNodeTree(child, collector);
+        this.traverseNodeTree(child, collector, currentDepth + 1);
       }
     }
   }
 
   /**
    * 获取节点的SVG数据
+   * Security: Response size limit to prevent memory exhaustion
    */
+  private static readonly MAX_SVG_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
+
   async getNodeAsSVG(fileId: string, nodeId: string): Promise<string> {
     try {
       const images = await this.exportImage(fileId, [nodeId], { format: 'svg' });
       const svgUrl = images[nodeId];
-      
+
       if (!svgUrl) {
         throw new Error(`无法获取节点 ${nodeId} 的SVG数据`);
       }
 
-      // 下载SVG内容
-      const response = await axios.get(svgUrl);
-      return response.data;
+      // Security: Validate URL before fetching (SSRF protection)
+      this.validateExternalUrl(svgUrl);
+
+      // 下载SVG内容 with size limit
+      const response = await axios.get(svgUrl, {
+        maxContentLength: FigmaService.MAX_SVG_SIZE_BYTES,
+        maxBodyLength: FigmaService.MAX_SVG_SIZE_BYTES,
+      });
+
+      // Additional check for response size
+      const svgData = response.data;
+      const dataSize = typeof svgData === 'string' ? Buffer.byteLength(svgData, 'utf8') : 0;
+      if (dataSize > FigmaService.MAX_SVG_SIZE_BYTES) {
+        throw new Error(`SVG data exceeds maximum size limit (${FigmaService.MAX_SVG_SIZE_BYTES / 1024 / 1024} MB)`);
+      }
+
+      return svgData;
     } catch (error) {
+      if (axios.isAxiosError(error) && error.message.includes('maxContentLength')) {
+        throw new Error(`SVG data exceeds maximum size limit (${FigmaService.MAX_SVG_SIZE_BYTES / 1024 / 1024} MB)`);
+      }
       throw new Error(`获取SVG数据失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   }

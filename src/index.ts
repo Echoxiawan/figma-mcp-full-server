@@ -12,6 +12,226 @@ import { FigmaImageExtractor, ImageExportOptions } from './image-extractor.js';
 import { FigmaStyleExtractor } from './style-extractor.js';
 import { FigmaElementExtractor } from './element-extractor.js';
 
+// ============================================================================
+// Input Validation (Security: Runtime validation for all user inputs)
+// ============================================================================
+
+const VALID_FORMATS = ['png', 'jpg', 'svg', 'pdf'] as const;
+type ImageFormat = typeof VALID_FORMATS[number];
+
+interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+function validateUrl(url: unknown): ValidationResult {
+  if (typeof url !== 'string') {
+    return { valid: false, error: 'URL must be a string' };
+  }
+  if (!url.trim()) {
+    return { valid: false, error: 'URL cannot be empty' };
+  }
+  try {
+    const parsed = new URL(url);
+    // Only allow Figma URLs
+    if (!parsed.hostname.endsWith('figma.com')) {
+      return { valid: false, error: 'URL must be a valid Figma URL (*.figma.com)' };
+    }
+    if (parsed.protocol !== 'https:') {
+      return { valid: false, error: 'URL must use HTTPS' };
+    }
+    return { valid: true };
+  } catch {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
+function validateFormat(format: unknown): ValidationResult {
+  if (format === undefined) {
+    return { valid: true }; // Optional, will use default
+  }
+  if (typeof format !== 'string') {
+    return { valid: false, error: 'Format must be a string' };
+  }
+  if (!VALID_FORMATS.includes(format as ImageFormat)) {
+    return { valid: false, error: `Format must be one of: ${VALID_FORMATS.join(', ')}` };
+  }
+  return { valid: true };
+}
+
+function validateScale(scale: unknown): ValidationResult {
+  if (scale === undefined) {
+    return { valid: true }; // Optional, will use default
+  }
+  if (typeof scale !== 'number') {
+    return { valid: false, error: 'Scale must be a number' };
+  }
+  if (scale < 0.01 || scale > 4) {
+    return { valid: false, error: 'Scale must be between 0.01 and 4' };
+  }
+  if (!Number.isFinite(scale)) {
+    return { valid: false, error: 'Scale must be a finite number' };
+  }
+  return { valid: true };
+}
+
+function validateFileId(fileId: unknown): ValidationResult {
+  if (typeof fileId !== 'string') {
+    return { valid: false, error: 'File ID must be a string' };
+  }
+  if (!fileId.trim()) {
+    return { valid: false, error: 'File ID cannot be empty' };
+  }
+  // Figma file IDs are alphanumeric
+  if (!/^[a-zA-Z0-9]+$/.test(fileId)) {
+    return { valid: false, error: 'File ID contains invalid characters' };
+  }
+  return { valid: true };
+}
+
+function validateNodeIds(nodeIds: unknown): ValidationResult {
+  if (!Array.isArray(nodeIds)) {
+    return { valid: false, error: 'Node IDs must be an array' };
+  }
+  if (nodeIds.length === 0) {
+    return { valid: false, error: 'Node IDs array cannot be empty' };
+  }
+  if (nodeIds.length > 500) {
+    return { valid: false, error: 'Too many node IDs (maximum 500)' };
+  }
+  for (let i = 0; i < nodeIds.length; i++) {
+    if (typeof nodeIds[i] !== 'string') {
+      return { valid: false, error: `Node ID at index ${i} must be a string` };
+    }
+    if (!nodeIds[i].trim()) {
+      return { valid: false, error: `Node ID at index ${i} cannot be empty` };
+    }
+  }
+  return { valid: true };
+}
+
+function validateBoolean(value: unknown, fieldName: string): ValidationResult {
+  if (value === undefined) {
+    return { valid: true }; // Optional
+  }
+  if (typeof value !== 'boolean') {
+    return { valid: false, error: `${fieldName} must be a boolean` };
+  }
+  return { valid: true };
+}
+
+// Helper to run multiple validations and return first error
+function runValidations(...validations: ValidationResult[]): string | null {
+  for (const result of validations) {
+    if (!result.valid) {
+      return result.error || 'Validation failed';
+    }
+  }
+  return null;
+}
+
+// ============================================================================
+// Error Sanitization (Security: Hide internal details from client responses)
+// ============================================================================
+
+// Error codes for categorization (logged internally, not exposed)
+enum ErrorCategory {
+  AUTHENTICATION = 'AUTH',
+  PERMISSION = 'PERMISSION',
+  NOT_FOUND = 'NOT_FOUND',
+  VALIDATION = 'VALIDATION',
+  RATE_LIMIT = 'RATE_LIMIT',
+  SERVER_ERROR = 'SERVER',
+  NETWORK = 'NETWORK',
+  UNKNOWN = 'UNKNOWN',
+}
+
+interface SanitizedError {
+  userMessage: string;
+  category: ErrorCategory;
+}
+
+function categorizeError(error: unknown): SanitizedError {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const lowerMessage = errorMessage.toLowerCase();
+
+  // Check for specific error patterns and map to safe messages
+  if (lowerMessage.includes('403') || lowerMessage.includes('access denied') || lowerMessage.includes('访问被拒绝')) {
+    return {
+      userMessage: 'Access denied. Please check your Figma token and file permissions.',
+      category: ErrorCategory.PERMISSION,
+    };
+  }
+
+  if (lowerMessage.includes('401') || lowerMessage.includes('unauthorized') || lowerMessage.includes('invalid token')) {
+    return {
+      userMessage: 'Authentication failed. Please verify your Figma access token.',
+      category: ErrorCategory.AUTHENTICATION,
+    };
+  }
+
+  if (lowerMessage.includes('404') || lowerMessage.includes('not found') || lowerMessage.includes('未找到')) {
+    return {
+      userMessage: 'Resource not found. Please verify the file ID and node ID are correct.',
+      category: ErrorCategory.NOT_FOUND,
+    };
+  }
+
+  if (lowerMessage.includes('429') || lowerMessage.includes('rate limit') || lowerMessage.includes('too many')) {
+    return {
+      userMessage: 'Rate limit exceeded. Please wait a moment and try again.',
+      category: ErrorCategory.RATE_LIMIT,
+    };
+  }
+
+  if (lowerMessage.includes('500') || lowerMessage.includes('502') || lowerMessage.includes('503') || lowerMessage.includes('504')) {
+    return {
+      userMessage: 'Figma service is temporarily unavailable. Please try again later.',
+      category: ErrorCategory.SERVER_ERROR,
+    };
+  }
+
+  if (lowerMessage.includes('network') || lowerMessage.includes('timeout') || lowerMessage.includes('econnrefused')) {
+    return {
+      userMessage: 'Network error. Please check your connection and try again.',
+      category: ErrorCategory.NETWORK,
+    };
+  }
+
+  if (lowerMessage.includes('security:')) {
+    // Security errors from our validation (safe to pass through)
+    return {
+      userMessage: errorMessage.replace(/^security:\s*/i, ''),
+      category: ErrorCategory.VALIDATION,
+    };
+  }
+
+  if (lowerMessage.includes('node-id') || lowerMessage.includes('url') || lowerMessage.includes('format')) {
+    return {
+      userMessage: 'Invalid request parameters. Please check the URL format and parameters.',
+      category: ErrorCategory.VALIDATION,
+    };
+  }
+
+  // Default: generic error (don't expose internal details)
+  return {
+    userMessage: 'An error occurred while processing your request. Please try again.',
+    category: ErrorCategory.UNKNOWN,
+  };
+}
+
+function sanitizeErrorForResponse(error: unknown, operationContext: string): string {
+  // Log full error details to stderr for debugging (not visible to client)
+  const fullError = error instanceof Error ? error.message : String(error);
+  console.error(`[${operationContext}] Error details (internal): ${fullError}`);
+
+  // Return sanitized message
+  const { userMessage, category } = categorizeError(error);
+  console.error(`[${operationContext}] Category: ${category}`);
+
+  return userMessage;
+}
+
 class FigmaMCPServer {
   private server: Server;
   private figmaService: FigmaService;
@@ -216,14 +436,15 @@ class FigmaMCPServer {
             return await this.handleExtractNodeElements(args);
 
           default:
-            throw new Error(`未知的工具: ${name}`);
+            throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error) {
+        const sanitizedMessage = sanitizeErrorForResponse(error, `tool:${name}`);
         return {
           content: [
             {
               type: 'text',
-              text: `错误: ${error instanceof Error ? error.message : '未知错误'}`,
+              text: JSON.stringify({ success: false, error: sanitizedMessage }, null, 2),
             },
           ],
         };
@@ -231,14 +452,29 @@ class FigmaMCPServer {
     });
   }
 
-  private async handleGetImage(args: any) {
-    const { url, format = 'png', scale = 1 } = args;
+  private async handleGetImage(args: unknown) {
+    const params = args as Record<string, unknown>;
+    const url = params.url;
+    const format = (params.format ?? 'png') as ImageFormat;
+    const scale = (params.scale ?? 1) as number;
+
+    // Validate inputs
+    const validationError = runValidations(
+      validateUrl(url),
+      validateFormat(params.format),
+      validateScale(params.scale)
+    );
+    if (validationError) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: validationError }, null, 2) }],
+      };
+    }
 
     try {
-      console.error(`开始处理图片请求: ${url}`);
-      
+      console.error(`Processing image request`);
+
       const options: ImageExportOptions = { format, scale };
-      const results = await this.imageExtractor.getImageFromUrl(url, options);
+      const results = await this.imageExtractor.getImageFromUrl(url as string, options);
 
       if (results.length === 0) {
         throw new Error('未找到可导出的图片');
@@ -265,22 +501,21 @@ class FigmaMCPServer {
         ],
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      console.error(`图片获取失败: ${errorMessage}`);
-      
+      const sanitizedMessage = sanitizeErrorForResponse(error, 'get_figma_image');
+
       return {
         content: [
           {
             type: 'text',
             text: JSON.stringify({
               success: false,
-              error: errorMessage,
+              error: sanitizedMessage,
               troubleshooting: {
                 commonIssues: [
-                  '检查Figma URL是否包含node-id参数',
-                  '确认Figma token是否有效',
-                  '验证对该文件是否有访问权限',
-                  '检查节点是否存在且可见'
+                  'Ensure the Figma URL contains a node-id parameter',
+                  'Verify your Figma token is valid',
+                  'Check that you have access to the file',
+                  'Confirm the node exists and is visible'
                 ],
                 urlFormat: 'https://www.figma.com/design/{fileId}/{name}?node-id={nodeId}'
               }
@@ -291,10 +526,23 @@ class FigmaMCPServer {
     }
   }
 
-  private async handleGetStyles(args: any) {
-    const { url, generateCSS = false } = args;
+  private async handleGetStyles(args: unknown) {
+    const params = args as Record<string, unknown>;
+    const url = params.url;
+    const generateCSS = (params.generateCSS ?? false) as boolean;
 
-    const styleData = await this.styleExtractor.getStylesFromUrl(url);
+    // Validate inputs
+    const validationError = runValidations(
+      validateUrl(url),
+      validateBoolean(params.generateCSS, 'generateCSS')
+    );
+    if (validationError) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: validationError }, null, 2) }],
+      };
+    }
+
+    const styleData = await this.styleExtractor.getStylesFromUrl(url as string);
 
     let cssCode = '';
     if (generateCSS && styleData.styles.length > 0) {
@@ -325,11 +573,28 @@ class FigmaMCPServer {
     };
   }
 
-  private async handleExportMultipleImages(args: any) {
-    const { fileId, nodeIds, format = 'png', scale = 1 } = args;
+  private async handleExportMultipleImages(args: unknown) {
+    const params = args as Record<string, unknown>;
+    const fileId = params.fileId;
+    const nodeIds = params.nodeIds;
+    const format = (params.format ?? 'png') as ImageFormat;
+    const scale = (params.scale ?? 1) as number;
+
+    // Validate inputs
+    const validationError = runValidations(
+      validateFileId(fileId),
+      validateNodeIds(nodeIds),
+      validateFormat(params.format),
+      validateScale(params.scale)
+    );
+    if (validationError) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: validationError }, null, 2) }],
+      };
+    }
 
     const options: ImageExportOptions = { format, scale };
-    const results = await this.imageExtractor.getMultipleImages(fileId, nodeIds, options);
+    const results = await this.imageExtractor.getMultipleImages(fileId as string, nodeIds as string[], options);
 
     return {
       content: [
@@ -347,10 +612,19 @@ class FigmaMCPServer {
     };
   }
 
-  private async handleGetFileInfo(args: any) {
-    const { url } = args;
+  private async handleGetFileInfo(args: unknown) {
+    const params = args as Record<string, unknown>;
+    const url = params.url;
 
-    const urlInfo = this.figmaService.parseUrl(url);
+    // Validate inputs
+    const validationError = runValidations(validateUrl(url));
+    if (validationError) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: validationError }, null, 2) }],
+      };
+    }
+
+    const urlInfo = this.figmaService.parseUrl(url as string);
     const file = await this.figmaService.getFile(urlInfo.fileId);
 
     return {
@@ -374,15 +648,25 @@ class FigmaMCPServer {
     };
   }
 
-  private async handleGetNodeImages(args: any) {
-    const { url } = args;
+  private async handleGetNodeImages(args: unknown) {
+    const params = args as Record<string, unknown>;
+    const url = params.url;
+
+    // Validate inputs
+    const validationError = runValidations(validateUrl(url));
+    if (validationError) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: validationError }, null, 2) }],
+      };
+    }
 
     try {
-      console.error(`开始获取节点图片资源: ${url}`);
-      
+      console.error(`Processing node images request`);
+
+      const urlInfo = this.figmaService.parseUrl(url as string);
       const images = await this.elementExtractor.getNodeImages(
-        this.figmaService.parseUrl(url).fileId,
-        this.figmaService.parseUrl(url).nodeId!
+        urlInfo.fileId,
+        urlInfo.nodeId!
       );
 
       console.error(`成功获取 ${images.length} 个图片资源`);
@@ -402,21 +686,20 @@ class FigmaMCPServer {
         ],
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      console.error(`获取节点图片失败: ${errorMessage}`);
-      
+      const sanitizedMessage = sanitizeErrorForResponse(error, 'get_node_images');
+
       return {
         content: [
           {
             type: 'text',
             text: JSON.stringify({
               success: false,
-              error: errorMessage,
+              error: sanitizedMessage,
               troubleshooting: {
                 commonIssues: [
-                  '检查Figma URL是否包含node-id参数',
-                  '确认节点中是否包含图片资源',
-                  '验证对该文件是否有访问权限',
+                  'Ensure the Figma URL contains a node-id parameter',
+                  'Confirm the node contains image resources',
+                  'Verify you have access to the file',
                 ],
                 urlFormat: 'https://www.figma.com/design/{fileId}/{name}?node-id={nodeId}'
               }
@@ -427,13 +710,22 @@ class FigmaMCPServer {
     }
   }
 
-  private async handleGetNodeSVG(args: any) {
-    const { url } = args;
+  private async handleGetNodeSVG(args: unknown) {
+    const params = args as Record<string, unknown>;
+    const url = params.url;
+
+    // Validate inputs
+    const validationError = runValidations(validateUrl(url));
+    if (validationError) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: validationError }, null, 2) }],
+      };
+    }
 
     try {
-      console.error(`开始获取节点SVG数据: ${url}`);
-      
-      const urlInfo = this.figmaService.parseUrl(url);
+      console.error(`Processing SVG request`);
+
+      const urlInfo = this.figmaService.parseUrl(url as string);
       if (!urlInfo.nodeId) {
         throw new Error('URL中缺少node-id参数');
       }
@@ -459,21 +751,20 @@ class FigmaMCPServer {
         ],
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      console.error(`获取SVG数据失败: ${errorMessage}`);
-      
+      const sanitizedMessage = sanitizeErrorForResponse(error, 'get_node_svg');
+
       return {
         content: [
           {
             type: 'text',
             text: JSON.stringify({
               success: false,
-              error: errorMessage,
+              error: sanitizedMessage,
               troubleshooting: {
                 commonIssues: [
-                  '检查节点是否为矢量图形或可导出为SVG',
-                  '确认Figma token权限是否充足',
-                  '验证节点ID格式是否正确',
+                  'Ensure the node is a vector graphic or exportable as SVG',
+                  'Verify your Figma token has sufficient permissions',
+                  'Check that the node ID format is correct',
                 ],
               }
             }, null, 2),
@@ -483,13 +774,26 @@ class FigmaMCPServer {
     }
   }
 
-  private async handleExtractNodeElements(args: any) {
-    const { url, includeDetails = false } = args;
+  private async handleExtractNodeElements(args: unknown) {
+    const params = args as Record<string, unknown>;
+    const url = params.url;
+    const includeDetails = (params.includeDetails ?? false) as boolean;
+
+    // Validate inputs
+    const validationError = runValidations(
+      validateUrl(url),
+      validateBoolean(params.includeDetails, 'includeDetails')
+    );
+    if (validationError) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: false, error: validationError }, null, 2) }],
+      };
+    }
 
     try {
-      console.error(`开始提取节点设计元素: ${url}`);
-      
-      const elements = await this.elementExtractor.getElementsFromUrl(url);
+      console.error(`Processing element extraction request`);
+
+      const elements = await this.elementExtractor.getElementsFromUrl(url as string);
       
       console.error(`成功提取设计元素: ${elements.totalElements} 个`);
       
@@ -526,23 +830,22 @@ class FigmaMCPServer {
         ],
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      console.error(`提取设计元素失败: ${errorMessage}`);
-      
+      const sanitizedMessage = sanitizeErrorForResponse(error, 'extract_node_elements');
+
       return {
         content: [
           {
             type: 'text',
             text: JSON.stringify({
               success: false,
-              error: errorMessage,
+              error: sanitizedMessage,
               troubleshooting: {
                 commonIssues: [
-                  '检查Figma URL是否包含node-id参数',
-                  '确认对该文件和节点有访问权限',
-                  '验证节点是否存在且包含设计元素',
+                  'Ensure the Figma URL contains a node-id parameter',
+                  'Verify you have access to the file and node',
+                  'Confirm the node exists and contains design elements',
                 ],
-                tip: '使用includeDetails=true获取详细的元素信息'
+                tip: 'Use includeDetails=true to get detailed element information'
               }
             }, null, 2),
           },
@@ -560,12 +863,12 @@ class FigmaMCPServer {
 
 // 启动服务器
 async function main() {
-  const accessToken = process.argv[2] || process.env.FIGMA_TOKEN;
-  
+  // Security: Only use environment variable for token to prevent exposure in process listings
+  const accessToken = process.env.FIGMA_TOKEN;
+
   if (!accessToken) {
-    console.error('错误: 缺少Figma访问令牌');
-    console.error('使用方法: node build/index.js <FIGMA_ACCESS_TOKEN>');
-    console.error('或设置环境变量: FIGMA_TOKEN');
+    console.error('Error: Missing Figma access token');
+    console.error('Please set the FIGMA_TOKEN environment variable');
     process.exit(1);
   }
 

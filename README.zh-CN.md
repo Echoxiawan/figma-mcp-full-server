@@ -16,10 +16,12 @@
 
 ## 安装和运行方式
 
+> **安全提示**：Figma令牌必须通过 `FIGMA_TOKEN` 环境变量提供。为防止令牌在进程列表和shell历史中暴露，不支持命令行参数传递令牌。
+
 ### 方式一：通过 npx 运行（推荐，无需安装）
 
 ```bash
-npx figma-mcp-full-server figd_your_figma_token_here
+FIGMA_TOKEN=figd_your_figma_token_here npx figma-mcp-full-server
 ```
 
 ### 方式二：全局安装后运行
@@ -29,7 +31,7 @@ npx figma-mcp-full-server figd_your_figma_token_here
 npm install -g figma-mcp-full-server
 
 # 运行
-figma-mcp-full-server figd_your_figma_token_here
+FIGMA_TOKEN=figd_your_figma_token_here figma-mcp-full-server
 ```
 
 ### 方式三：本地项目安装
@@ -39,9 +41,7 @@ figma-mcp-full-server figd_your_figma_token_here
 npm install figma-mcp-full-server
 
 # 运行
-npx figma-mcp-full-server figd_your_figma_token_here
-# 或者
-node_modules/.bin/figma-mcp-full-server figd_your_figma_token_here
+FIGMA_TOKEN=figd_your_figma_token_here npx figma-mcp-full-server
 ```
 
 ### 方式四：从源码运行（开发用）
@@ -53,9 +53,10 @@ npm install
 npm run build
 
 # 运行
-npm start figd_your_figma_token_here
+export FIGMA_TOKEN=figd_your_figma_token_here
+npm start
 # 或者
-node build/index.js figd_your_figma_token_here
+node build/index.js
 ```
 
 ## 快速开始
@@ -63,10 +64,27 @@ node build/index.js figd_your_figma_token_here
 ### 1. 获取Figma访问令牌
 
 1. 登录 [Figma](https://figma.com)
-2. 进入设置页面 (Settings)
-3. 找到 "Personal access tokens" 部分
-4. 点击 "Create new token"
-5. 复制生成的令牌（以 `figd_` 开头）
+2. 进入 **Settings** → **Security**
+3. 找到 **Personal access tokens** 部分
+4. 点击 **Generate new token**
+5. 输入令牌名称（例如："MCP Server"）
+6. **设置所需的权限范围**（见下表）
+7. 点击 **Generate token**
+8. 复制生成的令牌（以 `figd_` 开头）
+
+#### 所需权限范围 (Scopes)
+
+| 权限范围 | 是否必须 | 说明 |
+|---------|---------|------|
+| `file_content:read` | ✅ 必须 | 读取文件内容、节点数据、导出图片 |
+
+本 MCP 服务器使用以下 Figma API 端点，均需要 `file_content:read` 权限：
+- `GET /v1/files/:file_key` — 获取文件数据
+- `GET /v1/files/:file_key/nodes` — 获取特定节点数据
+- `GET /v1/files/:file_key/images` — 获取图片填充引用
+- `GET /v1/images/:file_key` — 导出图片 (PNG/JPG/SVG/PDF)
+
+> **注意**：已弃用的 `files:read` 权限也可以使用，但不推荐。请使用 `file_content:read` 以获得更好的安全性。
 
 ### 2. 在Claude Desktop中配置
 
@@ -253,7 +271,7 @@ https://www.figma.com/design/EXAMPLE_FILE_ID/Design-Name?node-id=123-456&t=abc12
 
 ```bash
 cd /path/to/figma-mcp
-node build/index.js figd_your_token_here
+FIGMA_TOKEN=figd_your_token_here node build/index.js
 ```
 
 应该看到: `Figma MCP服务器已启动`

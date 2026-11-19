@@ -59,12 +59,12 @@ npm install
 # 开发模式运行（使用 tsx）
 npm run dev
 
-# 构建并运行
+# 构建并运行（安全：使用环境变量传递令牌）
 npm run build
-npm start figd_your_figma_token_here
+FIGMA_TOKEN=figd_your_figma_token_here npm start
 
 # 或者直接运行编译后的文件
-node build/index.js figd_your_figma_token_here
+FIGMA_TOKEN=figd_your_figma_token_here node build/index.js
 ```
 
 ## Claude Desktop 配置示例
